@@ -9,6 +9,8 @@ import { ClubOpportunityRow } from "@/components/ClubOpportunityRow";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, SectionTitle } from "@/components/ui/Card";
 import { ApplicantStatusBadge } from "@/components/ui/Badge";
+import { AiInsightCard } from "@/components/ai/AiInsightCard";
+import { AiPlayerMatches } from "@/components/ai/AiPlayerMatches";
 import { useApp } from "@/lib/store";
 import { daysUntil } from "@/lib/utils";
 
@@ -32,6 +34,8 @@ export default function ClubDashboardPage() {
   const recent = [...clubApplicants].sort((a, b) => b.appliedAt.localeCompare(a.appliedAt)).slice(0, 5);
 
   const countFor = (id: string) => clubApplicants.filter((a) => a.opportunityId === id);
+  // Show AI matches for the opportunity drawing the most applications by default.
+  const featured = [...active].sort((a, b) => countFor(b.id).length - countFor(a.id).length)[0];
 
   return (
     <div>
@@ -85,9 +89,16 @@ export default function ClubDashboardPage() {
               );
             })}
           </div>
+
+          {active.length > 0 && (
+            <div className="mt-8">
+              <AiPlayerMatches opportunities={active} defaultOpportunityId={featured?.id} />
+            </div>
+          )}
         </section>
 
-        <aside>
+        <aside className="space-y-5">
+          <AiInsightCard />
           <Card padding="sm">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-slate-900">Recent applications</p>

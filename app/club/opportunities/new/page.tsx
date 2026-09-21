@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/Navigation";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
+import { AiOpportunityCreator } from "@/components/ai/AiOpportunityCreator";
+import type { OpportunityDraft } from "@/lib/ai";
 import { useApp } from "@/lib/store";
 import { CITIES } from "@/lib/geo";
 import { cn, parseISODate, toISODate } from "@/lib/utils";
@@ -34,6 +36,8 @@ interface FormState {
   position: Position | "any";
   level: PlayingLevel | "all";
   description: string;
+  /** One requirement per line */
+  requirements: string;
   registrationMethod: RegistrationMethod;
   externalUrl: string;
 }
@@ -50,6 +54,7 @@ const EMPTY: FormState = {
   position: "any",
   level: "all",
   description: "",
+  requirements: "",
   registrationMethod: "platform",
   externalUrl: "",
 };
@@ -73,6 +78,7 @@ const EXAMPLE: FormState = {
   level: "Grassroots",
   description:
     "We are looking for two goalkeepers to join our U-15 squad for the upcoming season. The session includes shot-stopping, distribution and small-sided games with our goalkeeping coach.",
+  requirements: ["Age 13–16 on the day", "Age proof", "Parent or guardian consent"].join("\n"),
   registrationMethod: "platform",
   externalUrl: "",
 };
@@ -84,6 +90,27 @@ export default function CreateOpportunityPage() {
   const [published, setPublished] = useState<Opportunity | null>(null);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
+
+  const applyDraft = (draft: OpportunityDraft) => {
+    setForm({
+      title: draft.title,
+      type: draft.type,
+      ageGroup: draft.ageGroup,
+      city: draft.city,
+      venue: draft.venue,
+      date: draft.date,
+      time: draft.time,
+      deadline: draft.deadline,
+      position: draft.position,
+      level: draft.level,
+      description: draft.description,
+      requirements: draft.requirements.join("\n"),
+      registrationMethod: "platform",
+      externalUrl: "",
+    });
+    setError(null);
+    document.getElementById("title")?.focus();
+  };
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -100,6 +127,10 @@ export default function CreateOpportunityPage() {
       return;
     }
     const group = AGE_GROUPS.find((g) => g.label === form.ageGroup) ?? AGE_GROUPS[2];
+    const requirementLines = form.requirements
+      .split("\n")
+      .map((r) => r.trim())
+      .filter(Boolean);
 
     const created = addOpportunity({
       title: form.title.trim(),
@@ -115,7 +146,9 @@ export default function CreateOpportunityPage() {
       positions: form.position === "any" ? "any" : [form.position],
       levels: form.level === "all" ? "all" : [form.level],
       description: form.description.trim(),
-      entryRequirements: [`Age ${group.min}–${group.max}`, "Age proof", "Parent or guardian consent for players under 18"],
+      entryRequirements: requirementLines.length
+        ? requirementLines
+        : [`Age ${group.min}–${group.max}`, "Age proof", "Parent or guardian consent for players under 18"],
       whatToBring: ["Football boots and shin guards", "Water bottle"],
       registrationMethod: form.registrationMethod,
       externalUrl: form.registrationMethod === "external" ? form.externalUrl.trim() : undefined,
@@ -174,6 +207,10 @@ export default function CreateOpportunityPage() {
           </Button>
         }
       />
+
+      <div className="mb-6">
+        <AiOpportunityCreator onDraft={applyDraft} />
+      </div>
 
       <form onSubmit={onSubmit} className="space-y-6">
         <Card>
@@ -260,6 +297,15 @@ export default function CreateOpportunityPage() {
                 placeholder="What happens on the day, what you are looking for, and anything players should know."
                 value={form.description}
                 onChange={(e) => set("description", e.target.value)}
+              />
+            </Field>
+            <Field label="Entry requirements" htmlFor="requirements" hint="One per line" className="sm:col-span-2">
+              <Textarea
+                id="requirements"
+                placeholder={"Age proof\nParent or guardian consent for players under 18"}
+                value={form.requirements}
+                onChange={(e) => set("requirements", e.target.value)}
+                className="min-h-[90px]"
               />
             </Field>
           </div>

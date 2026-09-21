@@ -67,7 +67,31 @@ Scores map to *Strong / Good / Partial / Low match*, and every reason is shown t
 "Why this opportunity matches you". This is deliberately simple and transparent - it is the foundation a
 smarter recommendation layer can be built on later.
 
-## Suggested demo script (3–4 minutes)
+## AI features for clubs
+
+The club side has five AI-assisted features. All of them run on **transparent, deterministic rules in the
+browser** (`lib/ai.ts`) — no external model or API key. The UI labels them *AI Match / AI Shortlist / AI Insight*
+and each card carries a small prototype note explaining how it works.
+
+| Feature | Where | What it does |
+| --- | --- | --- |
+| ✨ AI Player Matches | Club Dashboard, `/club/opportunities/[id]` | Ranks demo players registered on the platform against an opportunity (age 40 · position 25 · location 20 · level 15) with ✓/✗ reasons and *View Profile* |
+| ✨ AI Shortlist | Applications | *Generate AI Shortlist* ranks the applicants for the selected opportunity, explains why each one fits, and can shortlist them in one click |
+| 🧠 AI Application Summary | Applications | Counts strong / review / no-match applicants and writes a one-line insight from the real demo data |
+| ✨ Create with AI | Create Opportunity | Turns "Create an U-17 striker trial in Faridabad next weekend" into a fully filled, editable draft. Nothing is published until the club clicks Publish |
+| 🧠 AI Insight | Club Dashboard | Two or three short, data-derived observations (local interest, untapped matches, deadline pressure) |
+
+Demo players live in `data/players.ts`; the extra applicants in `data/demo.ts` give the summary meaningful tiers.
+
+## Suggested club AI demo (2–3 minutes)
+
+1. Club Dashboard → read the **AI Insight** card
+2. **Open** the U-17 Football Trial → **AI Player Matches** → *View Profile*
+3. **View Applications** → **AI Application Summary** → **Generate AI Shortlist** → *Shortlist all recommended*
+4. **Create Opportunity** → type *"Create an U-17 striker trial in Faridabad next weekend."* → **Generate Opportunity**
+5. Edit anything → **Publish Opportunity** → it appears on the dashboard and in the player listing
+
+## Suggested full demo script (3–4 minutes)
 
 **Player**
 

@@ -49,7 +49,8 @@ export function MatchReasons({
   compact = false,
   className,
 }: {
-  match: MatchResult;
+  /** Anything with a reasons list - player-side MatchResult or club-side PlayerMatch */
+  match: Pick<MatchResult, "reasons">;
   compact?: boolean;
   className?: string;
 }) {

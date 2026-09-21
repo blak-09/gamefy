@@ -27,7 +27,7 @@ import {
 import { uid } from "./utils";
 
 const STORAGE_KEY = "gaon.state";
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
 
 interface AppState {
   version: number;

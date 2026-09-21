@@ -32,7 +32,11 @@ export function ClubOpportunityRow({
             </Badge>
             {!opportunity.isDemo && <Badge tone="blue">Published by you</Badge>}
           </div>
-          <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-900">{opportunity.title}</h3>
+          <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-900">
+            <Link href={`/club/opportunities/${opportunity.id}`} className="hover:underline">
+              {opportunity.title}
+            </Link>
+          </h3>
           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
             <span className="inline-flex items-center gap-1.5">
               <CalendarDays className="h-4 w-4 text-slate-400" />
@@ -50,6 +54,12 @@ export function ClubOpportunityRow({
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
+          <Link
+            href={`/club/opportunities/${opportunity.id}`}
+            className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            Open
+          </Link>
           <Link
             href={`/club/applications?opportunity=${opportunity.id}`}
             className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800"

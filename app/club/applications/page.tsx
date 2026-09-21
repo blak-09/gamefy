@@ -2,16 +2,19 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, MapPin, Star, Target, Users } from "lucide-react";
+import { CalendarDays, Star, Users } from "lucide-react";
 import { PageHeader } from "@/components/Navigation";
 import { EmptyState } from "@/components/EmptyState";
 import { ProfileAvatar } from "@/components/ProfileCard";
+import { PlayerProfileModal } from "@/components/PlayerProfileModal";
+import { AiApplicationSummary } from "@/components/ai/AiApplicationSummary";
+import { AiShortlist } from "@/components/ai/AiShortlist";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Field";
-import { Modal } from "@/components/ui/Modal";
 import { ApplicantStatusBadge, Badge } from "@/components/ui/Badge";
 import { useApp } from "@/lib/store";
+import { scorePlayer, type RankedPlayer } from "@/lib/ai";
 import { cn, formatDate } from "@/lib/utils";
 import type { ApplicantStatus, ClubApplicant } from "@/types";
 
@@ -37,35 +40,49 @@ function ClubApplications() {
   const { clubProfile, opportunities, clubApplicants, setApplicantStatus } = useApp();
   const [opportunityId, setOpportunityId] = useState(searchParams.get("opportunity") ?? "all");
   const [tab, setTab] = useState<StatusTab>("all");
-  const [viewing, setViewing] = useState<ClubApplicant | null>(null);
+  const [viewing, setViewing] = useState<RankedPlayer<ClubApplicant> | null>(null);
 
   const mine = useMemo(
     () => opportunities.filter((o) => o.organizerId === clubProfile.id),
     [opportunities, clubProfile.id],
   );
+  const focus = mine.find((o) => o.id === opportunityId);
+
+  const forOpportunity = useMemo(
+    () => clubApplicants.filter((a) => opportunityId === "all" || a.opportunityId === opportunityId),
+    [clubApplicants, opportunityId],
+  );
 
   const filtered = useMemo(
     () =>
-      clubApplicants
-        .filter((a) => opportunityId === "all" || a.opportunityId === opportunityId)
+      forOpportunity
         .filter((a) => tab === "all" || a.status === tab)
         .sort((a, b) => b.appliedAt.localeCompare(a.appliedAt)),
-    [clubApplicants, opportunityId, tab],
+    [forOpportunity, tab],
   );
 
-  const countFor = (key: StatusTab) =>
-    clubApplicants
-      .filter((a) => opportunityId === "all" || a.opportunityId === opportunityId)
-      .filter((a) => key === "all" || a.status === key).length;
+  const countFor = (key: StatusTab) => forOpportunity.filter((a) => key === "all" || a.status === key).length;
 
   const titleOf = (id: string) => opportunities.find((o) => o.id === id)?.title ?? "Opportunity";
 
   const toggleShortlist = (a: ClubApplicant) =>
     setApplicantStatus(a.id, a.status === "shortlisted" ? "reviewed" : "shortlisted");
 
+  const openProfile = (a: ClubApplicant) => {
+    const opp = opportunities.find((o) => o.id === a.opportunityId);
+    setViewing({ player: a, match: opp ? scorePlayer(a, opp) : { score: 0, tier: "no-match", reasons: [] } });
+  };
+
+  // Keep the modal's status badge in sync with store updates.
+  const viewingLive = viewing ? clubApplicants.find((a) => a.id === viewing.player.id) ?? viewing.player : null;
+
   return (
     <div>
       <PageHeader title="Applications" subtitle="Players who have applied to your opportunities." />
+
+      <div className="mb-6">
+        <AiApplicationSummary applicants={forOpportunity} opportunities={opportunities} focus={focus} />
+      </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 sm:inline-flex" role="tablist">
@@ -103,6 +120,10 @@ function ClubApplications() {
             ))}
           </Select>
         </div>
+      </div>
+
+      <div className="mt-5">
+        <AiShortlist key={focus?.id ?? "all"} opportunity={focus ?? null} applicants={forOpportunity} onViewProfile={setViewing} />
       </div>
 
       <div className="mt-6">
@@ -151,7 +172,7 @@ function ClubApplications() {
                   <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
                     <p className="text-xs text-slate-400">Applied {formatDate(a.appliedAt.slice(0, 10), "short")}</p>
                     <div className="flex gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => setViewing(a)}>
+                      <Button variant="secondary" size="sm" onClick={() => openProfile(a)}>
                         View Profile
                       </Button>
                       <Button
@@ -171,68 +192,41 @@ function ClubApplications() {
         )}
       </div>
 
-      <Modal open={Boolean(viewing)} onClose={() => setViewing(null)}>
-        {viewing && (
-          <div>
-            <div className="flex items-center gap-4">
-              <ProfileAvatar name={viewing.name} size="md" />
+      <PlayerProfileModal
+        player={viewingLive}
+        match={viewing?.match.reasons.length ? viewing.match : undefined}
+        onClose={() => setViewing(null)}
+        badges={viewingLive && <ApplicantStatusBadge status={viewingLive.status} />}
+        details={
+          viewingLive && (
+            <div className="flex gap-3">
+              <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
               <div>
-                <h2 className="text-xl font-semibold tracking-tight text-slate-900">{viewing.name}</h2>
-                <p className="text-sm text-slate-500">
-                  {viewing.age} | {viewing.position} | {viewing.location}
-                </p>
+                <dt className="text-xs text-slate-500">Applied to</dt>
+                <dd className="text-slate-900">
+                  {titleOf(viewingLive.opportunityId)} · {formatDate(viewingLive.appliedAt.slice(0, 10), "short")}
+                </dd>
               </div>
             </div>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Badge tone="blue">{viewing.level}</Badge>
-              <ApplicantStatusBadge status={viewing.status} />
-            </div>
-            <dl className="mt-5 space-y-3 text-sm">
-              <div className="flex gap-3">
-                <Target className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-                <div>
-                  <dt className="text-xs text-slate-500">Goal</dt>
-                  <dd className="text-slate-900">{viewing.goal}</dd>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-                <div>
-                  <dt className="text-xs text-slate-500">Applied to</dt>
-                  <dd className="text-slate-900">
-                    {titleOf(viewing.opportunityId)} · {formatDate(viewing.appliedAt.slice(0, 10), "short")}
-                  </dd>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-                <div>
-                  <dt className="text-xs text-slate-500">Based in</dt>
-                  <dd className="text-slate-900">{viewing.location}</dd>
-                </div>
-              </div>
-            </dl>
-            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          )
+        }
+        footer={
+          viewingLive && (
+            <>
               <Button variant="ghost" onClick={() => setViewing(null)}>
                 Close
               </Button>
               <Button
-                variant={viewing.status === "shortlisted" ? "success" : "primary"}
-                onClick={() => {
-                  toggleShortlist(viewing);
-                  setViewing({
-                    ...viewing,
-                    status: viewing.status === "shortlisted" ? "reviewed" : "shortlisted",
-                  });
-                }}
+                variant={viewingLive.status === "shortlisted" ? "success" : "primary"}
+                onClick={() => toggleShortlist(viewingLive)}
               >
-                <Star className={cn("h-4 w-4", viewing.status === "shortlisted" && "fill-current")} />
-                {viewing.status === "shortlisted" ? "Remove from shortlist" : "Shortlist player"}
+                <Star className={cn("h-4 w-4", viewingLive.status === "shortlisted" && "fill-current")} />
+                {viewingLive.status === "shortlisted" ? "Remove from shortlist" : "Shortlist player"}
               </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+            </>
+          )
+        }
+      />
     </div>
   );
 }
